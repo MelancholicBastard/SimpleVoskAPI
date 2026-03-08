@@ -27,7 +27,7 @@ try:
         repo_id=REPO_ID,
         repo_type="model",
         token=HF_TOKEN,
-        commit_message="Upload Test model"
+        commit_message="Upload Vosk model"
     )
     print("Загрузка завершена успешно!")
 except Exception as e:
