@@ -2,7 +2,6 @@
 
 from vosk import Model, KaldiRecognizer, SetLogLevel
 import sys
-import os
 import wave
 
 SetLogLevel(0)
@@ -16,7 +15,7 @@ if wf.getnchannels() != 1 or wf.getsampwidth() != 2 or wf.getcomptype() != "NONE
     print ("Audio file must be WAV format mono PCM.")
     exit (1)
 
-model = Model(".")
+model = Model("VoskRuModel")
 rec = KaldiRecognizer(model, wf.getframerate())
 rec.SetWords(True)
 
