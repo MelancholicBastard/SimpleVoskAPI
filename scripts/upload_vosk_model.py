@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from huggingface_hub import HfApi, login
 from dotenv import load_dotenv
 import os
