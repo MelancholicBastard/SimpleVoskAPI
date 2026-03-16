@@ -1,3 +1,7 @@
+#!/usr/bin/env python3
+
+from __future__ import annotations
+
 import os
 from contextlib import asynccontextmanager
 from typing import Any
@@ -6,6 +10,23 @@ from fastapi import FastAPI, File, HTTPException, Request, UploadFile, status
 from pydantic import BaseModel, Field
 
 from src.decode import DEFAULT_CHUNK_SIZE, DEFAULT_MODEL_PATH, DecodeError, VoskDecoder
+
+
+def _get_bool_env(name: str, default: bool) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() not in {"0", "false", "no", "off"}
+
+
+def _get_int_env(name: str, default: int) -> int:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    try:
+        return int(raw)
+    except ValueError as exc:
+        raise RuntimeError(f"Environment variable {name} must be an integer.") from exc
 
 
 class ServiceInfoResponse(BaseModel):
@@ -31,9 +52,9 @@ class DecodeResponse(BaseModel):
 async def lifespan(app: FastAPI):
     decoder = VoskDecoder(
         model_path=os.getenv("VOSK_MODEL_PATH", DEFAULT_MODEL_PATH),
-        recognizer_pool_size=int(os.getenv("VOSK_RECOGNIZER_POOL_SIZE", 4)),
-        words=os.getenv("VOSK_WORDS", "true").lower() in {"1", "true", "yes", "on"},
-        chunk_size=int(os.getenv("VOSK_CHUNK_SIZE", DEFAULT_CHUNK_SIZE)),
+        recognizer_pool_size=_get_int_env("VOSK_RECOGNIZER_POOL_SIZE", 4),
+        words=_get_bool_env("VOSK_WORDS", True),
+        chunk_size=_get_int_env("VOSK_CHUNK_SIZE", DEFAULT_CHUNK_SIZE),
     )
     app.state.decoder = decoder
     yield
@@ -75,6 +96,9 @@ async def decode_audio(
     request: Request,
     file: UploadFile = File(...),
 ) -> DecodeResponse:
+    if not file.filename:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Filename is required.")
+
     decoder = get_decoder(request)
     uploaded_audio = await file.read()
     if not uploaded_audio:
