@@ -67,8 +67,19 @@ class VoskDecoder:
 
     @staticmethod
     def _validate_wav(wf: wave.Wave_read) -> None:
-        if wf.getnchannels() != 1 or wf.getsampwidth() != 2 or wf.getcomptype() != "NONE":
-            raise DecodeError("Аудиофайл должен быть в формате WAV, моно PCM (16 бит).")
+        errors: list[str] = []
+        channels = wf.getnchannels()
+        sampwidth = wf.getsampwidth()
+        comptype = wf.getcomptype()
+        if channels != 1:
+            errors.append(f"каналы: ожидался 1 (mono), получено {channels}")
+        if sampwidth != 2:
+            errors.append(f"разрядность: ожидалось 2 байта (16-bit), получено {sampwidth}")
+        if comptype != "NONE":
+            compname = getattr(wf, "getcompname", lambda: "")()
+            errors.append(f"сжатие: ожидалось PCM (NONE), получено '{comptype}' ({compname})")
+        if errors:
+            raise DecodeError("Неверный файл WAV: " + "; ".join(errors))
 
     def _decode_wave_reader(self, wf: wave.Wave_read, sample_rate: int) -> dict[str, Any]:
         recognizer = self._acquire_recognizer_sync(sample_rate)
