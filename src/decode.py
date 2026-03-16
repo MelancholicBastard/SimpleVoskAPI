@@ -9,6 +9,7 @@ import sys
 import threading
 import wave
 from pathlib import Path
+from typing import Any
 
 from vosk import KaldiRecognizer, Model, SetLogLevel
 
@@ -43,16 +44,16 @@ class VoskDecoder:
         self._recognizers: dict[int, queue.Queue[KaldiRecognizer]] = {}
         self._pool_init_lock = threading.Lock()
 
-    async def decode_upload(self, uploaded_audio: bytes) -> dict[str, object]:
+    async def decode_upload(self, uploaded_audio: bytes) -> dict[str, Any]:
         return await asyncio.to_thread(self._decode_bytes_sync, uploaded_audio)
 
-    def decode_file(self, wav_file_path: str | os.PathLike[str]) -> dict[str, object]:
+    def decode_file(self, wav_file_path: str | os.PathLike[str]) -> dict[str, Any]:
         with wave.open(str(wav_file_path), "rb") as wf:
             self._validate_wav(wf)
             sample_rate = wf.getframerate()
             return self._decode_wave_reader(wf, sample_rate)
 
-    def _decode_bytes_sync(self, uploaded_audio: bytes) -> dict[str, object]:
+    def _decode_bytes_sync(self, uploaded_audio: bytes) -> dict[str, Any]:
         wav_buffer = io.BytesIO(uploaded_audio)
         try:
             with wave.open(wav_buffer, "rb") as wf:
@@ -67,7 +68,7 @@ class VoskDecoder:
         if wf.getnchannels() != 1 or wf.getsampwidth() != 2 or wf.getcomptype() != "NONE":
             raise DecodeError("Аудиофайл должен быть в формате WAV, моно PCM (16 бит).")
 
-    def _decode_wave_reader(self, wf: wave.Wave_read, sample_rate: int) -> dict[str, object]:
+    def _decode_wave_reader(self, wf: wave.Wave_read, sample_rate: int) -> dict[str, Any]:
         recognizer = self._acquire_recognizer_sync(sample_rate)
         partials: list[str] = []
         try:
