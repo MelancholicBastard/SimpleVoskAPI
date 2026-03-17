@@ -10,6 +10,9 @@ from fastapi import FastAPI, File, HTTPException, Request, UploadFile, status
 from pydantic import BaseModel, Field
 
 from src.decode import DEFAULT_CHUNK_SIZE, DEFAULT_MODEL_PATH, DecodeError, VoskDecoder
+import subprocess
+import sys
+from pathlib import Path
 
 
 def _get_bool_env(name: str, default: bool) -> bool:
@@ -50,6 +53,15 @@ class DecodeResponse(BaseModel):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Ensure model exists (scripts/download_vosk_model.py will download if missing)
+    model_path = os.getenv("VOSK_MODEL_PATH", DEFAULT_MODEL_PATH)
+    model_dir = Path(model_path)
+    if not model_dir.exists() or not any(model_dir.iterdir()):
+        try:
+            subprocess.run([sys.executable, "scripts/download_vosk_model.py"], check=True)
+        except subprocess.CalledProcessError as exc:
+            raise RuntimeError("Failed to download Vosk model") from exc
+
     decoder = VoskDecoder(
         model_path=os.getenv("VOSK_MODEL_PATH", DEFAULT_MODEL_PATH),
         recognizer_pool_size=_get_int_env("VOSK_RECOGNIZER_POOL_SIZE", 4),
