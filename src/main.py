@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import os
+import sys
+import subprocess
 from contextlib import asynccontextmanager
 from typing import Any
 
@@ -10,6 +12,7 @@ from fastapi import FastAPI, File, HTTPException, Request, UploadFile, status
 from pydantic import BaseModel, Field
 
 from src.decode import DEFAULT_CHUNK_SIZE, DEFAULT_MODEL_PATH, DecodeError, VoskDecoder
+
 
 
 def _get_bool_env(name: str, default: bool) -> bool:
@@ -26,7 +29,7 @@ def _get_int_env(name: str, default: int) -> int:
     try:
         return int(raw)
     except ValueError as exc:
-        raise RuntimeError(f"Environment variable {name} must be an integer.") from exc
+        raise RuntimeError(f"Переменная окружения {name} должна быть целочисленным числом.") from exc
 
 
 class ServiceInfoResponse(BaseModel):
@@ -50,6 +53,11 @@ class DecodeResponse(BaseModel):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    try:
+        subprocess.run([sys.executable, "scripts/download_vosk_model.py"], check=True)
+    except subprocess.CalledProcessError as exc:
+        raise RuntimeError("Не удалось загрузить Vosk model") from exc
+
     decoder = VoskDecoder(
         model_path=os.getenv("VOSK_MODEL_PATH", DEFAULT_MODEL_PATH),
         recognizer_pool_size=_get_int_env("VOSK_RECOGNIZER_POOL_SIZE", 4),
@@ -63,7 +71,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="DockerWithVosk API",
     version="0.1.0",
-    description="REST API for Vosk-based WAV transcription.",
+    description="REST API для Vosk-based WAV транскрибации.",
     lifespan=lifespan,
 )
 
@@ -71,7 +79,7 @@ app = FastAPI(
 def get_decoder(request: Request) -> VoskDecoder:
     decoder = getattr(request.app.state, "decoder", None)
     if decoder is None:
-        raise RuntimeError("Decoder is not initialized.")
+        raise RuntimeError("Декодер не был инициализирован.")
     return decoder
 
 
