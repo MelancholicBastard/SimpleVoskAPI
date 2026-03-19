@@ -1,3 +1,5 @@
 .env
 .venv
 vosk-ru-model
+__pycache__/
+*.py[cod]
